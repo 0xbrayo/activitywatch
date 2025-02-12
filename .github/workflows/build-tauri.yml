@@ -1,4 +1,4 @@
-name: Build
+name: Build Tauri
 
 on:
   push:
@@ -15,12 +15,10 @@ jobs:
     name: ${{ matrix.os }}, py-${{ matrix.python_version }}, node-${{ matrix.node_version }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
-    permissions:
-      contents: write  # needed for release creation
     env:
-      # Whether to build and include extras (like aw-notify and aw-watcher-input)
+      # Wether to build and include extras (like aw-notify and aw-watcher-input)
       AW_EXTRAS: true
-      # sets the macOS version target
+      # sets the macOS version target, see: https://users.rust-lang.org/t/compile-rust-binary-for-older-versions-of-mac-osx/38695
       MACOSX_DEPLOYMENT_TARGET: 10.9
     defaults:
       run:
@@ -28,12 +26,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-latest, macOS-13]  # Updated Ubuntu version for Tauri
+        os: [ubuntu-20.04, windows-latest, macOS-13]
         python_version: [3.9]
         node_version: [20]
         skip_rust: [false]
         skip_webui: [false]
         experimental: [false]
+
+        #include:
+        #  - os: ubuntu-latest
+        #    python_version: 3.9
+        #    node_version: 20
+        #    experimental: true
 
     steps:
     - uses: actions/checkout@v4
@@ -119,9 +123,12 @@ jobs:
       if: runner.os == 'Linux'
       run: |
           sudo apt-get update
-          # Dependencies for both builds
+          # Unsure which of these are actually necessary...
           sudo apt-get install -y \
             appstream \
+            qt5-default \
+            qtwayland5 \
+            libqt5x11extras5 \
             libfontconfig1 \
             libxcb1 \
             libfontconfig1-dev \
@@ -133,12 +140,7 @@ jobs:
             libxft-dev \
             libxi-dev \
             libxrandr-dev \
-            libxrender-dev \
-            # Tauri-specific dependencies
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf
+            libxrender-dev
 
     - name: Install dependencies
       run: |
@@ -172,31 +174,6 @@ jobs:
         source venv/bin/activate || source venv/Scripts/activate
         poetry install  # run again to ensure we have the correct version of PyInstaller
         make package SKIP_SERVER_RUST=${{ matrix.skip_rust }}
-
-    # Tauri build steps
-    - name: Setup Rust for Tauri
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Rust cache for Tauri
-      uses: swatinem/rust-cache@v2
-      with:
-        workspaces: './aw-tauri/src-tauri -> target'
-
-    - name: Install Tauri dependencies
-      working-directory: aw-tauri
-      run: npm install
-
-    - name: Build Tauri app
-      uses: tauri-apps/tauri-action@v0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        projectPath: aw-tauri
-        tagName: ${{ github.ref_name }}
-        releaseName: 'ActivityWatch v__VERSION__'
-        releaseBody: 'See the assets to download and install this version.'
-        releaseDraft: true
-        prerelease: false
 
     - name: Package dmg
       if: runner.os == 'macOS'
@@ -243,18 +220,11 @@ jobs:
         # The entire process is deferred to a shell file for consistency.
         ./scripts/package/package-deb.sh
 
-    # Prebuild step for Tauri
-    - name: Prebuild Tauri
-      working-directory: aw-tauri
-      run: make prebuild
-
     - name: Upload packages
       uses: actions/upload-artifact@v4
       with:
         name: builds-${{ runner.os }}-py${{ matrix.python_version }}
-        path: |
-          dist/activitywatch-*.*
-          aw-tauri/src-tauri/target/release/bundle/**/*
+        path: dist/activitywatch-*.*
 
   release-notes:
     runs-on: ubuntu-latest
@@ -321,18 +291,10 @@ jobs:
           prefix: 'v'
 
       # create a release
-      - name: Update Release Notes
-        run: |
-          echo "## New Tauri-based UI" >> dist/release_notes/release_notes.md
-          echo "This release includes both the traditional Qt-based UI and the new Tauri-based UI." >> dist/release_notes/release_notes.md
-          echo "The Tauri-based UI is currently in beta and available as separate downloads." >> dist/release_notes/release_notes.md
-
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           draft: true
-          files: |
-            dist/*/activitywatch-*.*
-            dist/*/bundle/**/*
+          files: dist/*/activitywatch-*.*
           body_path: dist/release_notes/release_notes.md
-          prerelease: ${{ !(steps.version.outputs.is_stable == 'true') }}
+          prerelease: ${{ !(steps.version.outputs.is_stable == 'true') }}  # must compare to true, since boolean outputs are actually just strings, and "false" is truthy since it's not empty: https://github.com/actions/runner/issues/1483#issuecomment-994986996
