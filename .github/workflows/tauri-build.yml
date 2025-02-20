@@ -55,8 +55,4 @@ jobs:
         with:
           name: tauri-build-${{ matrix.os }}
           path: |
-            aw-tauri/src-tauri/target/release/bundle/**/*.rpm
-            aw-tauri/src-tauri/target/release/bundle/**/*.dmg
-            aw-tauri/src-tauri/target/release/bundle/**/*.msi
-            aw-tauri/src-tauri/target/release/bundle/**/*.deb
-            aw-tauri/src-tauri/target/release/bundle/**/*.AppImage
+            aw-tauri/src-tauri/target/release/aw-tauri*
