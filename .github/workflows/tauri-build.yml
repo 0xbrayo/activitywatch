@@ -26,22 +26,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-latest, macOS-13]
+        os: [ubuntu-20.04, windows-latest, macOS-13]
         python_version: [3.9]
         node_version: [20]
         experimental: [false]
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-20.04
             tauri_deps: >-
-              libwebkit2gtk-4.1-dev
-              libappindicator3-dev
-              librsvg2-dev
-              patchelf
-              libgtk-3-dev
-              xdg-utils
-          - os: ubuntu-22.04-arm
-            tauri_deps: >-
-              libwebkit2gtk-4.1-dev
+              libwebkit2gtk-4.0-dev
               libappindicator3-dev
               librsvg2-dev
               patchelf
