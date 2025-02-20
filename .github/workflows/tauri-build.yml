@@ -1,0 +1,360 @@
+name: Alternative Build (Tauri)
+
+on:
+  push:
+    branches: [ master ]
+    tags:
+      - v*
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: ${{ matrix.os }}, py-${{ matrix.python_version }}, node-${{ matrix.node_version }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    env:
+      # Whether to build and include extras (like aw-notify and aw-watcher-input)
+      AW_EXTRAS: true
+      # sets the macOS version target
+      MACOSX_DEPLOYMENT_TARGET: 10.9
+      # Skip aw-server-rust and aw-qt
+      SKIP_SERVER_RUST: true
+      SKIP_QT: true
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm, windows-latest, macOS-13]
+        python_version: [3.9]
+        node_version: [20]
+        experimental: [false]
+        include:
+          - os: ubuntu-22.04
+            tauri_deps: >-
+              libwebkit2gtk-4.1-dev
+              libappindicator3-dev
+              librsvg2-dev
+              patchelf
+              libgtk-3-dev
+              xdg-utils
+          - os: ubuntu-22.04-arm
+            tauri_deps: >-
+              libwebkit2gtk-4.1-dev
+              libappindicator3-dev
+              librsvg2-dev
+              patchelf
+              libgtk-3-dev
+              xdg-utils
+          - os: windows-latest
+            tauri_deps: ""
+          - os: macOS-13
+            tauri_deps: ""
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+        fetch-depth: 0  # fetch all branches and tags
+
+    # Build in release mode if:
+    #  - on a tag (release)
+    #  - on the master branch (nightly)
+    - name: Set RELEASE
+      run: |
+        echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> $GITHUB_ENV
+
+    - name: Set up Python
+      if: runner.os != 'macOS'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python_version }}
+
+    # Setup Python version built for older macOS
+    - name: Set up Python for macOS
+      if: runner.os == 'macOS'
+      run: |
+        curl https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macosx10.9.pkg -o "python.pkg"
+        sudo installer -pkg python.pkg -target /
+        echo "/Library/Frameworks/Python.framework/Versions/${{ matrix.python_version }}/bin" >> $GITHUB_PATH
+        "/Applications/Python ${{ matrix.python_version }}/Install Certificates.command"
+      env:
+        PYTHON_VERSION: ${{ matrix.python_version }}.13
+
+    - name: Install APT dependencies (Ubuntu)
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            appstream \
+            libfontconfig1 \
+            libxcb1 \
+            libfontconfig1-dev \
+            libfreetype6-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxft-dev \
+            libxi-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            ${{ matrix.tauri_deps }}
+
+    - name: Install dependencies
+      run: |
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          choco install innosetup
+        fi
+        pip3 install poetry==1.3.2
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: stable
+
+    - name: Rust cache
+      uses: swatinem/rust-cache@v2
+      with:
+        workspaces: 'aw-tauri/src-tauri -> target'
+
+    - name: Get npm cache directories
+      id: npm-cache-dirs
+      run: |
+        echo "tauri_cache_dir=$(cd aw-tauri && npm config get cache)" >> $GITHUB_OUTPUT
+        echo "webui_cache_dir=$(cd aw-tauri/aw-webui && npm config get cache)" >> $GITHUB_OUTPUT
+
+    - uses: actions/cache@v4
+      name: Cache aw-tauri npm
+      env:
+        cache-name: node-tauri
+      with:
+        path: ${{ steps.npm-cache-dirs.outputs.tauri_cache_dir }}
+        key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('aw-tauri/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ env.cache-name }}-
+
+    - uses: actions/cache@v4
+      name: Cache aw-webui npm
+      env:
+        cache-name: node-webui
+      with:
+        path: ${{ steps.npm-cache-dirs.outputs.webui_cache_dir }}
+        key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('aw-tauri/aw-webui/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ env.cache-name }}-
+
+    - name: Setup Node.js environment
+      env:
+        NODE_ENV: "production"
+      run: |
+        npm config set audit false
+        npm config set fund false
+        npm config set progress false
+
+    - name: Install dependencies
+      working-directory: aw-tauri
+      run: |
+        npm install
+
+    - name: Build Python Components
+      run: |
+        python3 -m venv venv
+        source venv/bin/activate || source venv/Scripts/activate
+        poetry install
+        # Build everything except aw-server-rust and aw-qt
+        make build SKIP_QT=true SKIP_SERVER_RUST=true
+        pip freeze  # output Python packages, useful for debugging dependency versions
+
+    - name: Run Python Tests
+      run: |
+        source venv/bin/activate || source venv/Scripts/activate
+        make test SKIP_SERVER_RUST=true SKIP_QT=true
+
+    # Don't run integration tests on Windows
+    - name: Run integration tests
+      if: runner.os != 'Windows'
+      run: |
+        source venv/bin/activate || source venv/Scripts/activate
+        make test-integration
+
+    - name: Build aw-webui
+      working-directory: aw-tauri/aw-webui
+      run: |
+        npm install
+        make
+
+    - name: Build and Package Tauri
+      working-directory: aw-tauri
+      env:
+        TAURI_BUILD_TYPE: "release"
+        NODE_ENV: "production"
+      run: |
+        make prebuild
+        make build
+
+    - name: Package Python Components
+      run: |
+        source venv/bin/activate || source venv/Scripts/activate
+        poetry install  # run again to ensure we have the correct version of PyInstaller
+        make package SKIP_SERVER_RUST=true SKIP_QT=true
+
+    - name: Validate build artifacts
+      run: |
+        # Function to check if any files exist matching pattern
+        check_files() {
+          local pattern=$1
+          local desc=$2
+          if ! ls $pattern 1> /dev/null 2>&1; then
+            echo "::error::No $desc files found at $pattern"
+            return 1
+          fi
+        }
+
+        # Check Python component artifacts
+        check_files "dist/activitywatch-*" "Python components" || true
+
+        # Check Tauri artifacts
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          check_files "aw-tauri/src-tauri/target/release/bundle/msi/*.msi" "MSI installer" || true
+          check_files "aw-tauri/src-tauri/target/release/bundle/nsis/*.exe" "NSIS installer" || true
+        elif [ "$RUNNER_OS" == "Linux" ]; then
+          check_files "aw-tauri/src-tauri/target/release/bundle/appimage/*.AppImage" "AppImage" || true
+          check_files "aw-tauri/src-tauri/target/release/bundle/deb/*.deb" "DEB package" || true
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          check_files "aw-tauri/src-tauri/target/release/bundle/dmg/*.dmg" "DMG image" || true
+        fi
+
+    - name: Set version
+      run: |
+        # Get version from getversion.sh script
+        VERSION=$(./scripts/package/getversion.sh)
+        echo "AW_VERSION=$VERSION" >> $GITHUB_ENV
+        echo "Building version: $VERSION"
+
+    - name: List build artifacts
+      run: |
+        echo "Listing Tauri build artifacts:"
+        ls -R aw-tauri/src-tauri/target/release/bundle/
+
+    - name: Move artifacts to dist
+      run: |
+        mkdir -p dist/python dist/tauri
+        
+        # Get version
+        VERSION=$(./scripts/package/getversion.sh)
+        echo "AW_VERSION=$VERSION" >> $GITHUB_ENV
+
+        # Move Python artifacts (they're already in dist/)
+        mv dist/activitywatch-* dist/python/ || echo "No Python artifacts found"
+
+        # Move Tauri artifacts
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          cp -v aw-tauri/src-tauri/target/release/bundle/msi/*.msi "dist/tauri/activitywatch-tauri-$VERSION-windows-x64.msi" || echo "No MSI found"
+          cp -v aw-tauri/src-tauri/target/release/bundle/nsis/*.exe "dist/tauri/activitywatch-tauri-$VERSION-windows-x64-setup.exe" || echo "No EXE found"
+        elif [ "$RUNNER_OS" == "Linux" ]; then
+          if [ "${{ matrix.os }}" == "ubuntu-22.04-arm" ]; then
+            cp -v aw-tauri/src-tauri/target/release/bundle/appimage/*.AppImage "dist/tauri/activitywatch-tauri-$VERSION-linux-aarch64.AppImage" || echo "No AppImage found"
+            cp -v aw-tauri/src-tauri/target/release/bundle/deb/*.deb "dist/tauri/activitywatch-tauri-$VERSION-linux-aarch64.deb" || echo "No DEB found"
+          else
+            cp -v aw-tauri/src-tauri/target/release/bundle/appimage/*.AppImage "dist/tauri/activitywatch-tauri-$VERSION-linux-x86_64.AppImage" || echo "No AppImage found"
+            cp -v aw-tauri/src-tauri/target/release/bundle/deb/*.deb "dist/tauri/activitywatch-tauri-$VERSION-linux-x86_64.deb" || echo "No DEB found"
+          fi
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          cp -v aw-tauri/src-tauri/target/release/bundle/dmg/*.dmg "dist/tauri/activitywatch-tauri-$VERSION-macos-x64.dmg" || echo "No DMG found"
+        fi
+
+    - name: List dist directory
+      run: |
+        echo "Contents of dist directory:"
+        ls -R dist/
+
+    - name: Upload Python packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: builds-python-${{ runner.os }}-py${{ matrix.python_version }}
+        path: dist/python/*.*
+
+    - name: Upload Tauri packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: builds-tauri-${{ runner.os }}
+        path: dist/tauri/*.*
+
+  release-notes:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')  # only on runs triggered from tag
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0  # fetch all branches and tags
+
+      - uses: ActivityWatch/check-version-format-action@v2
+        id: version
+        with:
+          prefix: 'v'
+
+      - name: Echo version
+        run: |
+          echo "${{ steps.version.outputs.full }} (stable: ${{ steps.version.outputs.is_stable }})"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          pip install requests
+
+      - name: Generate release notes
+        run: |
+          LAST_RELEASE=`STABLE_ONLY=${{ steps.version.output.is_stable }} ./scripts/get_latest_release.sh`
+          ./scripts/build_changelog.py --range "$LAST_RELEASE...${{ steps.version.outputs.full }}"
+
+      - name: Rename
+        run: |
+          mv changelog.md release_notes.md
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release_notes
+          path: release_notes.md
+
+  release:
+    needs: [build, release-notes]
+    if: startsWith(github.ref, 'refs/tags/v')  # only run on tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: dist
+
+      - uses: ActivityWatch/check-version-format-action@v2
+        id: version
+        with:
+          prefix: 'v'
+    
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: |
+            dist/builds-python-*/*.*
+            dist/builds-tauri-*/*.*
+          body_path: dist/release_notes/release_notes.md
+          prerelease: ${{ !(steps.version.outputs.is_stable == 'true') }}
