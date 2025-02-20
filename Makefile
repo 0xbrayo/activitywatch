@@ -17,6 +17,10 @@ SUBMODULES := aw-core aw-client aw-qt aw-server aw-server-rust aw-watcher-afk aw
 ifeq ($(SKIP_SERVER_RUST),true)
 	SUBMODULES := $(filter-out aw-server-rust,$(SUBMODULES))
 endif
+# Exclude aw-qt if SKIP_QT is true
+ifeq ($(SKIP_QT),true)
+	SUBMODULES := $(filter-out aw-qt,$(SUBMODULES))
+endif
 # Include extras if AW_EXTRAS is true
 ifeq ($(AW_EXTRAS),true)
 	SUBMODULES := $(SUBMODULES) aw-notify aw-watcher-input
@@ -69,7 +73,9 @@ build: aw-core/.git
 # Installs things like desktop/menu shortcuts.
 # Might in the future configure autostart on the system.
 install:
-	make --directory=aw-qt install
+	ifneq ($(SKIP_QT),true)
+		make --directory=aw-qt install
+	endif
 # Installation is already happening in the `make build` step currently.
 # We might want to change this.
 # We should also add some option to install as user (pip3 install --user)

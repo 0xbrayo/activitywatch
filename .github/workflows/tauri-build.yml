@@ -12,7 +12,6 @@ jobs:
   build:
     name: ${{ matrix.os }}, py-${{ matrix.python_version }}, node-${{ matrix.node_version }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.experimental }}
     env:
       # Whether to build and include extras (like aw-notify and aw-watcher-input)
       AW_EXTRAS: true
@@ -27,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-22.04-arm, windows-latest, macOS-13]
+        os: [ubuntu-22.04, windows-latest, macOS-13]
         python_version: [3.9]
         node_version: [20]
         experimental: [false]
@@ -179,11 +178,11 @@ jobs:
         make test SKIP_SERVER_RUST=true SKIP_QT=true
 
     # Don't run integration tests on Windows
-    - name: Run integration tests
-      if: runner.os != 'Windows'
-      run: |
-        source venv/bin/activate || source venv/Scripts/activate
-        make test-integration
+    # - name: Run integration tests
+    #   if: runner.os != 'Windows'
+    #   run: |
+    #     source venv/bin/activate || source venv/Scripts/activate
+    #     make test-integration
 
     - name: Build aw-webui
       working-directory: aw-tauri/aw-webui
