@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     env:
-      # Wether to build and include extras (like aw-notify and aw-watcher-input)
+      # Whether to build and include extras (like aw-notify and aw-watcher-input)
       AW_EXTRAS: true
       # sets the macOS version target, see: https://users.rust-lang.org/t/compile-rust-binary-for-older-versions-of-mac-osx/38695
       MACOSX_DEPLOYMENT_TARGET: 10.9
@@ -291,31 +291,6 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
           
-  move-artifacts:
-    needs: build-tauri
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    
-    steps:
-      - name: Get draft release
-        id: get_draft
-        uses: cardinalby/git-get-release-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          draft: true
-          latest: true
-      
-      - name: Download release assets
-        run: | 
-          mkdir -p dist
-          cd dist
-          echo '${{ steps.get_draft.outputs.assets }}' | jq -r '.[] | "\(.browser_download_url) \(.name)"' | while read -r url name; do
-                         echo "Downloading $name from $url"
-                         curl -L -o "$name" "$url"
-                       done
-      
   release-notes:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')  # only on runs triggered from tag
@@ -360,7 +335,7 @@ jobs:
           path: release_notes.md
 
   release:
-    needs: [build, move-artifacts, release-notes]
+    needs: [build, build-tauri, release-notes]
     if: startsWith(github.ref, 'refs/tags/v')  # only run on tag
     runs-on: ubuntu-latest
     steps:
