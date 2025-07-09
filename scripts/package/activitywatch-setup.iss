@@ -5,7 +5,7 @@
 #define MyAppVersion GetEnv('AW_VERSION')
 #define MyAppPublisher "ActivityWatch Contributors"
 #define MyAppURL "https://activitywatch.net/"
-#define MyAppExeName "aw-qt.exe"
+#define MyAppExeName "aw-tauri.exe"
 #define RootDir "..\.."
 #define DistDir "..\..\dist"
 
@@ -15,7 +15,7 @@
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 ; NOTE: the double {{ are used to escape the { character (needed for the AppId)
-AppId={{F226B8F4-3244-46E6-901D-0CE8035423E4}
+AppId={{12E34097-560B-47D3-AED1-9B5CBA320D0B}j
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
@@ -30,7 +30,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir={#DistDir}
 OutputBaseFilename=activitywatch-setup
-SetupIconFile="{#RootDir}\aw-qt\media\logo\logo.ico"
+SetupIconFile="{#RootDir}\aw-tauri\aw-webui\media\logo\logo.ico"
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma
@@ -45,7 +45,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "StartMenuEntry" ; Description: "Start ActivityWatch when Windows starts"; GroupDescription: "Windows Startup"; MinVersion: 4,4;
 
 [Files]
-Source: "{#DistDir}\activitywatch\aw-qt.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DistDir}\activitywatch\aw-tauri.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DistDir}\activitywatch\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
