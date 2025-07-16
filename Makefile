@@ -153,10 +153,6 @@ package:
 		make --directory=$$dir package; \
 		cp -r $$dir/dist/$$dir dist/activitywatch; \
 	done
-# Move aw-qt to the root of the dist folder
-	mv dist/activitywatch/aw-qt aw-qt-tmp
-	mv aw-qt-tmp/* dist/activitywatch
-	rmdir aw-qt-tmp
 # Remove problem-causing binaries
 	rm -f dist/activitywatch/libdrm.so.2       # see: https://github.com/ActivityWatch/activitywatch/issues/161
 	rm -f dist/activitywatch/libharfbuzz.so.0  # see: https://github.com/ActivityWatch/activitywatch/issues/660#issuecomment-959889230
