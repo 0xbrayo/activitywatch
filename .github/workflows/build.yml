@@ -194,16 +194,16 @@ jobs:
         CERTIFICATE_MACOS_P12_BASE64: ${{ secrets.CERTIFICATE_MACOS_P12_BASE64 }}
         CERTIFICATE_MACOS_P12_PASSWORD: ${{ secrets.CERTIFICATE_MACOS_P12_PASSWORD }}
 
-    - name: Package AppImage
-      if: startsWith(runner.os, 'linux')
-      run: |
-        ./scripts/package/package-appimage.sh
+    # - name: Package AppImage
+    #   if: startsWith(runner.os, 'linux')
+    #   run: |
+    #     ./scripts/package/package-appimage.sh
 
-    - name: Package deb
-      if: startsWith(runner.os, 'linux')
-      run: |
-        # The entire process is deferred to a shell file for consistency.
-        ./scripts/package/package-deb.sh
+    # - name: Package deb
+    #   if: startsWith(runner.os, 'linux')
+    #   run: |
+    #     # The entire process is deferred to a shell file for consistency.
+    #     ./scripts/package/package-deb.sh
 
     - name: Upload packages
       uses: actions/upload-artifact@v4
