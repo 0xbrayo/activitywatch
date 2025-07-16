@@ -1,0 +1,1 @@
+Run move-to-aw-modules.sh to move all modules to ~/aw-modules/. Aw-tauri (replaces aw-qt), will use this directory to discover new modules. You can add your own modules to this directory. The modules should start with the aw- prefix.
