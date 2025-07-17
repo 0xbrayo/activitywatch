@@ -53,7 +53,7 @@ build: aw-core/.git
 	make --directory=aw-client build
 	make --directory=aw-core build
 #	Needed to ensure that the server has the correct version set
-	python -c "import aw_server; print(aw_server.__version__)"
+	python3 -c "import aw_server; print(aw_server.__version__)"
 
 
 # Install
@@ -117,9 +117,9 @@ test-integration:
 %/.git:
 	git submodule update --init --recursive
 
-ICON := "aw-qt/media/logo/logo.png"
+ICON := "aw-tauri/aw-webui/media/logo/logo.png"
 
-aw-qt/media/logo/logo.icns:
+aw-tauri/aw-webui/media/logo/logo.icns:
 	mkdir -p build/MyIcon.iconset
 	sips -z 16 16     $(ICON) --out build/MyIcon.iconset/icon_16x16.png
 	sips -z 32 32     $(ICON) --out build/MyIcon.iconset/icon_16x16@2x.png
@@ -133,10 +133,10 @@ aw-qt/media/logo/logo.icns:
 	cp				  $(ICON)       build/MyIcon.iconset/icon_512x512@2x.png
 	iconutil -c icns build/MyIcon.iconset
 	rm -R build/MyIcon.iconset
-	mv build/MyIcon.icns aw-qt/media/logo/logo.icns
+	mv build/MyIcon.icns aw-tauri/aw-webui/media/logo/logo.icns
 
-dist/ActivityWatch.app: aw-qt/media/logo/logo.icns
-	pyinstaller --clean --noconfirm aw.spec
+dist/ActivityWatch.app: aw-tauri/aw-webui/media/logo/logo.icns
+	scripts/package/build_app.sh
 
 dist/ActivityWatch.dmg: dist/ActivityWatch.app
 	# NOTE: This does not codesign the dmg, that is done in the CI config
