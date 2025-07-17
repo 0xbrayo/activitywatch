@@ -38,7 +38,7 @@ if [ ! -f "aw-tauri/src-tauri/target/release/aw-tauri" ]; then
     cd ..
 fi
 
-# Note: Skipping aw-server-rust and aw-sync for now
+# Note: Include aw-sync but not aw-server
 
 # Create app bundle structure
 echo "Creating app bundle structure..."
@@ -48,8 +48,23 @@ mkdir -p "dist/${APP_NAME}.app/Contents/"{MacOS,Resources}
 echo "Copying aw-tauri binary..."
 cp "aw-tauri/src-tauri/target/release/aw-tauri" "dist/${APP_NAME}.app/Contents/MacOS/"
 
-# Skipping copying supporting binaries (aw-server-rust and aw-sync) for now
-echo "Skipping supporting binaries..."
+# Copy aw-sync binary but not aw-server
+echo "Looking for aw-sync binary..."
+AW_SYNC_BINARY=""
+if [ -f "aw-server-rust/target/release/aw-sync" ]; then
+    AW_SYNC_BINARY="aw-server-rust/target/release/aw-sync"
+elif [ -f "dist-backup/activitywatch/aw-sync" ]; then
+    AW_SYNC_BINARY="dist-backup/activitywatch/aw-sync"
+fi
+
+if [ -n "$AW_SYNC_BINARY" ]; then
+    echo "Found aw-sync at: $AW_SYNC_BINARY"
+    mkdir -p "dist/${APP_NAME}.app/Contents/Resources/aw_sync"
+    cp "$AW_SYNC_BINARY" "dist/${APP_NAME}.app/Contents/Resources/aw_sync/"
+else
+    echo "aw-sync binary not found. Creating placeholder directory."
+    mkdir -p "dist/${APP_NAME}.app/Contents/Resources/aw_sync"
+fi
 
 # Print detected version
 echo "Using version: ${VERSION}"
@@ -146,11 +161,13 @@ echo "APPL????" > "dist/${APP_NAME}.app/Contents/PkgInfo"
 # Set permissions
 echo "Setting permissions..."
 chmod +x "dist/${APP_NAME}.app/Contents/MacOS/aw-tauri"
-# Make watcher binaries executable if they exist
+# Make watcher and sync binaries executable if they exist
 [ -f "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_window/aw-watcher-window" ] && \
     chmod +x "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_window/aw-watcher-window"
 [ -f "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_afk/aw-watcher-afk" ] && \
     chmod +x "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_afk/aw-watcher-afk"
+[ -f "dist/${APP_NAME}.app/Contents/Resources/aw_sync/aw-sync" ] && \
+    chmod +x "dist/${APP_NAME}.app/Contents/Resources/aw_sync/aw-sync"
 
 # Code signing (if APPLE_PERSONALID is set)
 if [ -n "$APPLE_PERSONALID" ]; then

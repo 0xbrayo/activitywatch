@@ -11,7 +11,7 @@
 
 SHELL := /usr/bin/env bash
 
-SUBMODULES := aw-core aw-client aw-server aw-watcher-afk aw-watcher-window aw-tauri
+SUBMODULES := aw-core aw-client aw-server aw-server-rust aw-watcher-afk aw-watcher-window aw-tauri
 
 #Include awatcher on linux 
 ifeq ($(OS),Linux)
@@ -54,18 +54,6 @@ build: aw-core/.git
 	make --directory=aw-core build
 #	Needed to ensure that the server has the correct version set
 	python3 -c "import aw_server; print(aw_server.__version__)"
-
-
-# Install
-# -------
-#
-# Installs things like desktop/menu shortcuts.
-# Might in the future configure autostart on the system.
-install:
-	make --directory=aw-qt install
-# Installation is already happening in the `make build` step currently.
-# We might want to change this.
-# We should also add some option to install as user (pip3 install --user)
 
 # Update
 # ------
