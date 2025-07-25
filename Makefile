@@ -11,7 +11,13 @@
 
 SHELL := /usr/bin/env bash
 
-SUBMODULES := aw-core aw-client aw-server aw-server-rust aw-watcher-afk aw-watcher-window aw-tauri
+SUBMODULES := aw-core aw-client aw-server-rust aw-watcher-afk aw-watcher-window aw-tauri
+
+# Exclude aw-server-rust if SKIP_SERVER_RUST is true
+ifeq ($(SKIP_SERVER_RUST),true)
+        SUBMODULES := $(filter-out aw-server-rust,$(SUBMODULES))
+endif
+
 
 #Include awatcher on linux
 ifeq ($(OS),Linux)
@@ -35,6 +41,10 @@ PACKAGEABLES := $(foreach dir,$(SUBMODULES),$(call has_target,$(dir),package))
 LINTABLES := $(foreach dir,$(SUBMODULES),$(call has_target,$(dir),lint))
 TYPECHECKABLES := $(foreach dir,$(SUBMODULES),$(call has_target,$(dir),typecheck))
 
+ifeq ($(AW_SYNC_ONLY),true)
+	PACKAGEABLES := $(filter-out aw-server-rust,$(PACKAGEABLES))
+endif
+
 # The `build` target
 # ------------------
 #
@@ -47,7 +57,7 @@ build: aw-core/.git
 	pip install 'setuptools>49.1.1'
 	for module in $(SUBMODULES); do \
 		echo "Building $$module"; \
-		if [ "$$module" = "aw-server-rust" ] && [ "$(SKIP_RUST_SERVER)" = "true" ]; then \
+		if [ "$$module" = "aw-server-rust" ] && [ "$(AW_SYNC_ONLY)" = "true" ]; then \
 			make --directory=$$module aw-sync SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module aw-sync"; exit 2; }; \
 		else \
 			make --directory=$$module build SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module build"; exit 2; }; \
@@ -145,6 +155,10 @@ package:
 		make --directory=$$dir package; \
 		cp -r $$dir/dist/$$dir dist/activitywatch; \
 	done
+ifeq ($(AW_SYNC_ONLY),true)
+	mkdir -p dist/activitywatch/aw-server-rust
+	cp aw-server-rust/target/release/aw-sync dist/activitywatch/aw-server-rust/aw-sync
+endif
 # Remove problem-causing binaries
 	rm -f dist/activitywatch/libdrm.so.2       # see: https://github.com/ActivityWatch/activitywatch/issues/161
 	rm -f dist/activitywatch/libharfbuzz.so.0  # see: https://github.com/ActivityWatch/activitywatch/issues/660#issuecomment-959889230

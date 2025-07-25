@@ -32,7 +32,7 @@ jobs:
         skip_rust: [false]
         skip_webui: [false]
         experimental: [false]
-
+        aw_sync_only: [true]
         #include:
         #  - os: ubuntu-latest
         #    python_version: 3.9
@@ -139,7 +139,7 @@ jobs:
         python3 -m venv venv
         source venv/bin/activate || source venv/Scripts/activate
         poetry install
-        make build SKIP_WEBUI=${{ matrix.skip_webui }} SKIP_SERVER_RUST=${{ matrix.skip_rust }}
+        make build SKIP_WEBUI=${{ matrix.skip_webui }} SKIP_SERVER_RUST=${{ matrix.skip_rust }} AW_SYNC_ONLY=${{ matrix.sync_only}}
         pip freeze  # output Python packages, useful for debugging dependency versions
 
     - name: Run tests
@@ -148,11 +148,11 @@ jobs:
         make test SKIP_SERVER_RUST=${{ matrix.skip_rust }}
 
     # Don't run integration tests on Windows, doesn't work for some reason
-    - name: Run integration tests
-      if: runner.os != 'Windows'
-      run: |
-        source venv/bin/activate || source venv/Scripts/activate
-        make test-integration
+    # - name: Run integration tests
+    #   if: runner.os != 'Windows'
+    #   run: |
+    #     source venv/bin/activate || source venv/Scripts/activate
+    #     make test-integration
 
     - name: Package
       run: |

@@ -30,13 +30,6 @@ echo "Cleaning previous builds..."
 rm -rf "dist/${APP_NAME}.app"
 mkdir -p "dist"
 
-# Build aw-tauri if it doesn't exist
-if [ ! -f "aw-tauri/src-tauri/target/release/aw-tauri" ]; then
-    echo "Building aw-tauri..."
-    cd aw-tauri
-    npm run tauri build
-    cd ..
-fi
 
 # Note: Include aw-sync but not aw-server
 
