@@ -13,7 +13,7 @@ SHELL := /usr/bin/env bash
 
 SUBMODULES := aw-core aw-client aw-server aw-server-rust aw-watcher-afk aw-watcher-window aw-tauri
 
-#Include awatcher on linux 
+#Include awatcher on linux
 ifeq ($(OS),Linux)
 	SUBMODULES := $(SUBMODULES) awatcher
 endif
@@ -47,7 +47,11 @@ build: aw-core/.git
 	pip install 'setuptools>49.1.1'
 	for module in $(SUBMODULES); do \
 		echo "Building $$module"; \
-		make --directory=$$module build SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module build"; exit 2; }; \
+		if [ "$$module" = "aw-server-rust" ] && [ "$(SKIP_RUST_SERVER)" = "true" ]; then \
+			make --directory=$$module aw-sync SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module aw-sync"; exit 2; }; \
+		else \
+			make --directory=$$module build SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module build"; exit 2; }; \
+		fi; \
 	done
 #   The below is needed due to: https://github.com/ActivityWatch/activitywatch/issues/173
 	make --directory=aw-client build
