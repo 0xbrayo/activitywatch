@@ -11,7 +11,7 @@
 
 SHELL := /usr/bin/env bash
 
-SUBMODULES := aw-core aw-client aw-server-rust aw-watcher-afk aw-watcher-window aw-tauri
+SUBMODULES := aw-core aw-client aw-server aw-server-rust aw-watcher-afk aw-watcher-window aw-tauri
 
 # Exclude aw-server-rust if SKIP_SERVER_RUST is true
 ifeq ($(SKIP_SERVER_RUST),true)
@@ -42,7 +42,7 @@ LINTABLES := $(foreach dir,$(SUBMODULES),$(call has_target,$(dir),lint))
 TYPECHECKABLES := $(foreach dir,$(SUBMODULES),$(call has_target,$(dir),typecheck))
 
 ifeq ($(AW_SYNC_ONLY),true)
-	PACKAGEABLES := $(filter-out aw-server-rust,$(PACKAGEABLES))
+	PACKAGEABLES := $(filter-out aw-server-rust aw-server, $(PACKAGEABLES))
 endif
 
 # The `build` target
