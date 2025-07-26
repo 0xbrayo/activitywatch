@@ -4,24 +4,24 @@ set -e
 # Configuration
 APP_NAME="ActivityWatch"
 BUNDLE_ID="net.activitywatch.ActivityWatch"
-# Get version with a more robust fallback mechanism
-if git describe --tags --abbrev=0 2>/dev/null; then
-    VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
-else
-    # Try getting version from pyproject.toml
-    if grep -q 'version' pyproject.toml 2>/dev/null; then
-        VERSION=$(grep 'version' pyproject.toml | head -1 | sed 's/.*version = "\(.*\)".*/\1/')
-    else
-        # Fallback to a default version
-        VERSION="0.1.0"
-    fi
-fi
+VERSION="0.1.0"
 ICON_PATH="aw-tauri/src-tauri/icons/icon.icns"
-ENTITLEMENTS_PATH="scripts/package/entitlements.plist"
 
 # Check if running on macOS
 if [[ "$(uname)" != "Darwin" ]]; then
     echo "This script is designed to run on macOS only."
+    exit 1
+fi
+
+# Check if dist/activitywatch exists
+if [ ! -d "dist/activitywatch" ]; then
+    echo "Error: dist/activitywatch directory not found. Please build the project first."
+    exit 1
+fi
+
+# Check if aw-tauri binary exists
+if [ ! -f "dist/activitywatch/aw-tauri" ]; then
+    echo "Error: aw-tauri binary not found in dist/activitywatch/"
     exit 1
 fi
 
@@ -30,87 +30,37 @@ echo "Cleaning previous builds..."
 rm -rf "dist/${APP_NAME}.app"
 mkdir -p "dist"
 
-
-# Note: Include aw-sync but not aw-server
-
 # Create app bundle structure
 echo "Creating app bundle structure..."
 mkdir -p "dist/${APP_NAME}.app/Contents/"{MacOS,Resources}
 
-# Copy aw-tauri binary to MacOS folder
-echo "Copying aw-tauri binary..."
-cp "aw-tauri/src-tauri/target/release/aw-tauri" "dist/${APP_NAME}.app/Contents/MacOS/"
+# Copy aw-tauri as the main executable
+echo "Copying aw-tauri as main executable..."
+cp "dist/activitywatch/aw-tauri" "dist/${APP_NAME}.app/Contents/MacOS/aw-tauri"
+chmod +x "dist/${APP_NAME}.app/Contents/MacOS/aw-tauri"
 
-# Copy aw-sync binary but not aw-server
-echo "Looking for aw-sync binary..."
-AW_SYNC_BINARY=""
-if [ -f "aw-server-rust/target/release/aw-sync" ]; then
-    AW_SYNC_BINARY="aw-server-rust/target/release/aw-sync"
-elif [ -f "dist-backup/activitywatch/aw-sync" ]; then
-    AW_SYNC_BINARY="dist-backup/activitywatch/aw-sync"
-fi
-
-if [ -n "$AW_SYNC_BINARY" ]; then
-    echo "Found aw-sync at: $AW_SYNC_BINARY"
-    mkdir -p "dist/${APP_NAME}.app/Contents/Resources/aw_sync"
-    cp "$AW_SYNC_BINARY" "dist/${APP_NAME}.app/Contents/Resources/aw_sync/"
-else
-    echo "aw-sync binary not found. Creating placeholder directory."
-    mkdir -p "dist/${APP_NAME}.app/Contents/Resources/aw_sync"
-fi
-
-# Print detected version
-echo "Using version: ${VERSION}"
-
-# Find and copy watcher binaries
-# Check different possible locations for aw-watcher-window
-echo "Looking for aw-watcher-window binary..."
-AW_WINDOW_BINARY=""
-AW_WINDOW_JXA=""
-if [ -f "aw-watcher-window/aw_watcher_window/aw-watcher-window" ]; then
-    AW_WINDOW_BINARY="aw-watcher-window/aw_watcher_window/aw-watcher-window"
-    AW_WINDOW_JXA="aw-watcher-window/aw_watcher_window/printAppStatus.jxa"
-elif [ -f "dist-backup/activitywatch/aw-watcher-window/aw-watcher-window" ]; then
-    AW_WINDOW_BINARY="dist-backup/activitywatch/aw-watcher-window/aw-watcher-window"
-    if [ -f "aw-watcher-window/aw_watcher_window/printAppStatus.jxa" ]; then
-        AW_WINDOW_JXA="aw-watcher-window/aw_watcher_window/printAppStatus.jxa"
+# Copy all other components to Resources in organized directories
+echo "Copying all components to Resources..."
+for component in dist/activitywatch/*/; do
+    if [ -d "$component" ]; then
+        component_name=$(basename "$component")
+        echo "  Copying $component_name..."
+        mkdir -p "dist/${APP_NAME}.app/Contents/Resources/$component_name"
+        cp -r "$component"/* "dist/${APP_NAME}.app/Contents/Resources/$component_name/"
     fi
-fi
+done
 
-if [ -n "$AW_WINDOW_BINARY" ]; then
-    echo "Found aw-watcher-window at: $AW_WINDOW_BINARY"
-    mkdir -p "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_window"
-    cp "$AW_WINDOW_BINARY" "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_window/"
-    if [ -n "$AW_WINDOW_JXA" ]; then
-        cp "$AW_WINDOW_JXA" "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_window/"
-    fi
-else
-    echo "aw-watcher-window binary not found. Creating placeholder directory."
-    mkdir -p "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_window"
-fi
+# Make all aw-* executables within Resources executable
+echo "Setting executable permissions..."
+find "dist/${APP_NAME}.app/Contents/Resources" -type f -name "aw-*" -exec chmod +x {} \;
 
-# Check different possible locations for aw-watcher-afk
-echo "Looking for aw-watcher-afk binary..."
-AW_AFK_BINARY=""
-if [ -f "aw-watcher-afk/aw_watcher_afk/aw-watcher-afk" ]; then
-    AW_AFK_BINARY="aw-watcher-afk/aw_watcher_afk/aw-watcher-afk"
-elif [ -f "dist-backup/activitywatch/aw-watcher-afk/aw-watcher-afk" ]; then
-    AW_AFK_BINARY="dist-backup/activitywatch/aw-watcher-afk/aw-watcher-afk"
-fi
-
-if [ -n "$AW_AFK_BINARY" ]; then
-    echo "Found aw-watcher-afk at: $AW_AFK_BINARY"
-    mkdir -p "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_afk"
-    cp "$AW_AFK_BINARY" "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_afk/"
-else
-    echo "aw-watcher-afk binary not found. Creating placeholder directory."
-    mkdir -p "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_afk"
-fi
-
-# Copy icons
+# Copy app icon
 echo "Copying app icon..."
-mkdir -p "dist/${APP_NAME}.app/Contents/Resources"
-cp "${ICON_PATH}" "dist/${APP_NAME}.app/Contents/Resources/icon.icns"
+if [ -f "$ICON_PATH" ]; then
+    cp "$ICON_PATH" "dist/${APP_NAME}.app/Contents/Resources/icon.icns"
+else
+    echo "Warning: Icon file not found at $ICON_PATH"
+fi
 
 # Create Info.plist
 echo "Creating Info.plist..."
@@ -138,43 +88,58 @@ cat > "dist/${APP_NAME}.app/Contents/Info.plist" << EOF
     <key>CFBundleVersion</key>
     <string>${VERSION}</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>Please grant access to use Apple Events</string>
+    <string>ActivityWatch needs access to monitor application usage</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.14</string>
 </dict>
 </plist>
 EOF
 
-# Create an empty PkgInfo file
+# Create PkgInfo file
 echo "Creating PkgInfo..."
 echo "APPL????" > "dist/${APP_NAME}.app/Contents/PkgInfo"
-
-# Set permissions
-echo "Setting permissions..."
-chmod +x "dist/${APP_NAME}.app/Contents/MacOS/aw-tauri"
-# Make watcher and sync binaries executable if they exist
-[ -f "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_window/aw-watcher-window" ] && \
-    chmod +x "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_window/aw-watcher-window"
-[ -f "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_afk/aw-watcher-afk" ] && \
-    chmod +x "dist/${APP_NAME}.app/Contents/Resources/aw_watcher_afk/aw-watcher-afk"
-[ -f "dist/${APP_NAME}.app/Contents/Resources/aw_sync/aw-sync" ] && \
-    chmod +x "dist/${APP_NAME}.app/Contents/Resources/aw_sync/aw-sync"
 
 # Code signing (if APPLE_PERSONALID is set)
 if [ -n "$APPLE_PERSONALID" ]; then
     echo "Signing app with identity: $APPLE_PERSONALID"
-    if [ -f "$ENTITLEMENTS_PATH" ]; then
-        codesign --deep --force --sign "$APPLE_PERSONALID" --entitlements "$ENTITLEMENTS_PATH" \
-            "dist/${APP_NAME}.app"
-    else
-        codesign --deep --force --sign "$APPLE_PERSONALID" \
-            "dist/${APP_NAME}.app"
-    fi
+    codesign --deep --force --sign "$APPLE_PERSONALID" "dist/${APP_NAME}.app"
     echo "App signing complete."
 else
-    echo "APPLE_PERSONALID environment variable not set. Skipping app signing."
+    echo "APPLE_PERSONALID environment variable not set. Skipping code signing."
 fi
 
-echo "App bundle created at dist/${APP_NAME}.app"
+echo ""
+echo "✅ App bundle created successfully at: dist/${APP_NAME}.app"
+echo ""
+echo "App Bundle Structure:"
+echo "├── Contents/"
+echo "│   ├── MacOS/"
+echo "│   │   └── aw-tauri (main executable)"
+echo "│   ├── Resources/"
+for dir in "dist/${APP_NAME}.app/Contents/Resources/"*/; do
+    if [ -d "$dir" ] && [[ $(basename "$dir") == aw-* ]]; then
+        component_name=$(basename "$dir")
+        echo "│   │   ├── $component_name/"
+        # Show the main executable in each component
+        main_exec=$(find "$dir" -maxdepth 1 -name "aw-*" -type f 2>/dev/null | head -1)
+        if [ -n "$main_exec" ]; then
+            exec_name=$(basename "$main_exec")
+            echo "│   │   │   ├── $exec_name (executable)"
+        fi
+        # Show other important files
+        other_files=$(find "$dir" -maxdepth 2 -name "*.jxa" -o -name "Python" -o -name "*.dylib" 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$other_files" -gt 0 ]; then
+            echo "│   │   │   └── ... (+ dependencies & libraries)"
+        fi
+    fi
+done
+echo "│   │   └── icon.icns"
+echo "│   ├── Info.plist"
+echo "│   └── PkgInfo"
+echo ""
+echo "All executables are properly packaged and accessible by aw-tauri."
+echo "To test the app, run: open dist/${APP_NAME}.app"
