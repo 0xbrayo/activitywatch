@@ -158,7 +158,7 @@ jobs:
       run: |
         source venv/bin/activate || source venv/Scripts/activate
         poetry install  # run again to ensure we have the correct version of PyInstaller
-        make package SKIP_SERVER_RUST=${{ matrix.skip_rust }}
+        make package SKIP_SERVER_RUST=${{ matrix.skip_rust }} AW_SYNC_ONLY=${{ matrix.sync_only}}
 
     - name: Package dmg
       if: runner.os == 'macOS'

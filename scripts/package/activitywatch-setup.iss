@@ -5,7 +5,7 @@
 #define MyAppVersion GetEnv('AW_VERSION')
 #define MyAppPublisher "ActivityWatch Contributors"
 #define MyAppURL "https://activitywatch.net/"
-#define MyAppExeName "aw-tauri\aw-tauri.exe"
+#define MyAppExeName "aw-tauri.exe"
 #define RootDir "..\.."
 #define DistDir "..\..\dist"
 
