@@ -50,7 +50,9 @@ jobs:
     #  - on the master branch (nightly)
     - name: Set RELEASE
       run: |
-        echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> $GITHUB_ENV
+        # echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> $GITHUB_ENV
+        # temporary for ci testing
+        echo "RELEASE=true" >> $GITHUB_ENV
 
     - name: Set up Python
       if: runner.os != 'macOS'
