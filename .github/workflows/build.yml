@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-latest, macOS-13]
+        os: [ubuntu-22.04,ubuntu-22.04-arm, windows-latest, macOS-13, macos-latest]
         python_version: [3.9]
         node_version: [22]
         skip_rust: [false]
@@ -48,19 +48,21 @@ jobs:
     # Build in release mode if: (longer build times)
     #  - on a tag (release)
     #  - on the master branch (nightly)
-    - name: Set RELEASE
+    - name: Set environment variables
       run: |
-        echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> $GITHUB_ENV
+        # echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> $GITHUB_ENV
+        echo "RELEASE=true >> $GITHUB_ENV"
+        echo "AW_SYNC_ONLY=${{ matrix.aw_sync_only }}" >> $GITHUB_ENV
 
     - name: Set up Python
-      if: runner.os != 'macOS'
+      if: matrix.os != 'macOS-13'
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python_version }}
 
     # Setup Python version built for older macOS (https://github.com/actions/virtual-environments/issues/1256)
     - name: Set up Python for macOS
-      if: runner.os == 'macOS'
+      if: matrix.os == 'macOS-13'
       run: |
         curl https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macosx10.9.pkg -o "python.pkg"
 
@@ -139,7 +141,7 @@ jobs:
         python3 -m venv venv
         source venv/bin/activate || source venv/Scripts/activate
         poetry install
-        make build SKIP_WEBUI=${{ matrix.skip_webui }} SKIP_SERVER_RUST=${{ matrix.skip_rust }} AW_SYNC_ONLY=${{ matrix.sync_only}}
+        make build SKIP_WEBUI=${{ matrix.skip_webui }} SKIP_SERVER_RUST=${{ matrix.skip_rust }}
         pip freeze  # output Python packages, useful for debugging dependency versions
 
     - name: Run tests
@@ -158,7 +160,7 @@ jobs:
       run: |
         source venv/bin/activate || source venv/Scripts/activate
         poetry install  # run again to ensure we have the correct version of PyInstaller
-        make package SKIP_SERVER_RUST=${{ matrix.skip_rust }} AW_SYNC_ONLY=${{ matrix.sync_only}}
+        make package SKIP_SERVER_RUST=${{ matrix.skip_rust }}
 
     - name: Package dmg
       if: runner.os == 'macOS'
