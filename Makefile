@@ -11,6 +11,8 @@
 
 SHELL := /usr/bin/env bash
 
+OS := $(shell uname -s)
+
 SUBMODULES := aw-core aw-client aw-server aw-server-rust aw-watcher-afk aw-watcher-window aw-tauri
 
 # Exclude aw-server-rust if SKIP_SERVER_RUST is true
