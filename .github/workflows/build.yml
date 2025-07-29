@@ -25,7 +25,7 @@ jobs:
         shell: bash
     strategy:
       fail-fast: false
-      max-parallel: 10
+      max-parallel: 5
       matrix:
         os:
           [
