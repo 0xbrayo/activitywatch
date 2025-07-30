@@ -40,7 +40,7 @@ jobs:
         skip_rust: [false]
         skip_webui: [false]
         experimental: [false]
-        aw_sync_only: [true]
+        tauri_build: [true]
         #include:
         #  - os: ubuntu-latest
         #    python_version: 3.9
@@ -58,9 +58,8 @@ jobs:
       #  - on the master branch (nightly)
       - name: Set environment variables
         run: |
-          # echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> $GITHUB_ENV
-          echo "RELEASE=true" >> $GITHUB_ENV
-          echo "AW_SYNC_ONLY=${{ matrix.aw_sync_only }}" >> $GITHUB_ENV
+          echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> $GITHUB_ENV
+          echo "TAURI_BUILD=${{ matrix.tauri_build }}" >> $GITHUB_ENV
 
       - name: Set up Python
         if: matrix.os != 'macOS-13'

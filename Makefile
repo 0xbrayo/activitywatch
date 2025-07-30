@@ -20,6 +20,13 @@ ifeq ($(SKIP_SERVER_RUST),true)
         SUBMODULES := $(filter-out aw-server-rust,$(SUBMODULES))
 endif
 
+# Build in release mode by default, unless RELEASE=false
+ifeq ($(RELEASE), false)
+		targetdir := debug
+else
+		targetdir := release
+endif
+
 
 #Include awatcher on linux
 ifeq ($(OS),Linux)
@@ -43,7 +50,7 @@ PACKAGEABLES := $(foreach dir,$(SUBMODULES),$(call has_target,$(dir),package))
 LINTABLES := $(foreach dir,$(SUBMODULES),$(call has_target,$(dir),lint))
 TYPECHECKABLES := $(foreach dir,$(SUBMODULES),$(call has_target,$(dir),typecheck))
 
-ifeq ($(AW_SYNC_ONLY),true)
+ifeq ($(TAURI_BUILD),true)
 	PACKAGEABLES := $(filter-out aw-server-rust aw-server, $(PACKAGEABLES))
 endif
 
@@ -59,7 +66,7 @@ build: aw-core/.git
 	pip install 'setuptools>49.1.1'
 	for module in $(SUBMODULES); do \
 		echo "Building $$module"; \
-		if [ "$$module" = "aw-server-rust" ] && [ "$(AW_SYNC_ONLY)" = "true" ]; then \
+		if [ "$$module" = "aw-server-rust" ] && [ "$(TAURI_BUILD)" = "true" ]; then \
 			make --directory=$$module aw-sync SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module aw-sync"; exit 2; }; \
 		else \
 			make --directory=$$module build SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module build"; exit 2; }; \
@@ -157,9 +164,9 @@ package:
 		make --directory=$$dir package; \
 		cp -r $$dir/dist/$$dir dist/activitywatch; \
 	done
-ifeq ($(AW_SYNC_ONLY),true)
+ifeq ($(TAURI_BUILD),true)
 	mkdir -p dist/activitywatch/aw-server-rust
-	cp aw-server-rust/target/release/aw-sync dist/activitywatch/aw-server-rust/aw-sync
+	cp aw-server-rust/target/$(targetdir)/aw-sync dist/activitywatch/aw-server-rust/aw-sync
 endif
 # Remove problem-causing binaries
 	rm -f dist/activitywatch/libdrm.so.2       # see: https://github.com/ActivityWatch/activitywatch/issues/161
