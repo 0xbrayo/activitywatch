@@ -72,6 +72,9 @@ build: aw-core/.git
 		if [ "$$module" = "aw-server-rust" ] && [ "$(TAURI_BUILD)" = "true" ]; then \
 			make --directory=$$module aw-sync SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module aw-sync"; exit 2; }; \
 		else \
+			if [ "$$module" = "aw-tauri" ]; then \
+				python3 scripts/package/update_tauri_version.py aw-tauri/src-tauri/tauri.conf.json || { echo "Error updating tauri version"; exit 2; }; \
+			fi; \
 			make --directory=$$module build SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module build"; exit 2; }; \
 		fi; \
 	done

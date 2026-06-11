@@ -6,7 +6,7 @@ set -e
 
 APP_NAME="ActivityWatch"
 BUNDLE_ID="net.activitywatch.ActivityWatch"
-VERSION="0.1.0"
+VERSION="$(./scripts/package/getversion.sh | sed 's/^v//')"
 ICON_PATH="aw-tauri/src-tauri/icons/icon.icns"
 
 if [[ "$(uname)" != "Darwin" ]]; then
