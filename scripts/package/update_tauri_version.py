@@ -10,9 +10,10 @@ def main():
     
     tauri_conf_path = sys.argv[1]
     
-    # Get version from getversion.sh
+    # Get version from getversion.sh (run via bash so this works on Windows too,
+    # where the script can't be executed directly)
     try:
-        version_output = subprocess.check_output(["./scripts/package/getversion.sh"]).decode('utf-8').strip()
+        version_output = subprocess.check_output(["bash", "scripts/package/getversion.sh"]).decode('utf-8').strip()
     except Exception as e:
         print(f"Error running getversion.sh: {e}")
         sys.exit(1)
