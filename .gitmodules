@@ -24,7 +24,7 @@
 	url = https://github.com/ActivityWatch/aw-watcher-input.git
 [submodule "aw-tauri"]
 	path = aw-tauri
-	url = https://github.com/activitywatch/aw-tauri
+	url = https://github.com/0xbrayo/aw-tauri.git
 [submodule "awatcher"]
 	path = awatcher
 	url = https://github.com/2e3s/awatcher
