@@ -55,6 +55,20 @@ jobs:
         run: |
           echo "VERSION_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
+      - name: Determine and output version
+        run: |
+          VERSION_WITH_V=$(bash scripts/package/getversion.sh)
+          VERSION_NO_V="${VERSION_WITH_V#v}"
+          echo "VERSION_WITH_V=${VERSION_WITH_V}" >> $GITHUB_ENV
+          echo "========================================"
+          echo "Build Version Information (Tauri)"
+          echo "========================================"
+          echo "GitHub ref: ${{ github.ref }}"
+          echo "GitHub ref_name: ${{ github.ref_name }}"
+          echo "Version (with v):  ${VERSION_WITH_V}"
+          echo "Version (no v):     ${VERSION_NO_V}"
+          echo "========================================"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -150,6 +164,24 @@ jobs:
           poetry install
           make package SKIP_SERVER_RUST=${{ matrix.skip_rust }}
 
+      - name: Package Linux (Tauri bundles)
+        if: runner.os == 'Linux'
+        run: |
+          # aw-tauri's bundler produces .AppImage/.deb/.rpm under
+          # dist/activitywatch/aw-tauri/ via `make package`. Copy them out with
+          # versioned, arch-suffixed filenames so they match the
+          # `dist/activitywatch-*.*` upload pattern below.
+          ARCH=$(uname -m)
+          shopt -s nullglob
+          for ext in AppImage deb rpm; do
+            files=( dist/activitywatch/aw-tauri/*.${ext} )
+            case ${#files[@]} in
+              0) continue ;;
+              1) cp -v "${files[0]}" "dist/activitywatch-tauri-${VERSION_WITH_V}-linux-${ARCH}.${ext}" ;;
+              *) echo "ERROR: expected at most 1 .${ext} bundle, found ${#files[@]}" >&2; exit 1 ;;
+            esac
+          done
+
       - name: Package dmg
         if: runner.os == 'macOS'
         run: |
@@ -169,7 +201,7 @@ jobs:
 
             make dist/notarize
           fi
-          mv dist/ActivityWatch.dmg dist/activitywatch-tauri-${VERSION_TAG:-$(scripts/package/getversion.sh)}-macos-$(uname -m).dmg
+          mv dist/ActivityWatch.dmg dist/activitywatch-tauri-${VERSION_WITH_V}-macos-$(uname -m).dmg
         env:
           APPLE_EMAIL: ${{ secrets.APPLE_EMAIL }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -221,7 +253,7 @@ jobs:
           ls -la dist/updater/ || true
 
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: builds-tauri-${{ matrix.os }}-py${{ matrix.python_version }}
           path: |
@@ -265,7 +297,7 @@ jobs:
           mv changelog.md release_notes.md
 
       - name: Upload release notes
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release_notes_tauri
           path: release_notes.md
@@ -306,7 +338,7 @@ jobs:
           cat dist/latest.json
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           files: |

@@ -57,6 +57,20 @@ jobs:
       run: |
         echo "VERSION_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
+    - name: Determine and output version
+      run: |
+        VERSION_WITH_V=$(bash scripts/package/getversion.sh)
+        VERSION_NO_V="${VERSION_WITH_V#v}"
+        echo "VERSION_WITH_V=${VERSION_WITH_V}" >> $GITHUB_ENV
+        echo "========================================"
+        echo "Build Version Information"
+        echo "========================================"
+        echo "GitHub ref: ${{ github.ref }}"
+        echo "GitHub ref_name: ${{ github.ref_name }}"
+        echo "Version (with v):  ${VERSION_WITH_V}"
+        echo "Version (no v):     ${VERSION_NO_V}"
+        echo "========================================"
+
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
@@ -178,7 +192,7 @@ jobs:
           # Notarize
           make dist/notarize
         fi
-        mv dist/ActivityWatch.dmg dist/activitywatch-${VERSION_TAG:-$(scripts/package/getversion.sh)}-macos-$(uname -m).dmg
+        mv dist/ActivityWatch.dmg dist/activitywatch-${VERSION_WITH_V}-macos-$(uname -m).dmg
       env:
         APPLE_EMAIL: ${{ secrets.APPLE_EMAIL }}
         APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -199,7 +213,7 @@ jobs:
         ./scripts/package/package-deb.sh
 
     - name: Upload packages
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: builds-${{ matrix.os }}-py${{ matrix.python_version }}
         path: dist/activitywatch-*.*
@@ -242,7 +256,7 @@ jobs:
           mv changelog.md release_notes.md
 
       - name: Upload release notes
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release_notes
           path: release_notes.md
@@ -270,7 +284,7 @@ jobs:
 
       # create a release
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           files: dist/*/activitywatch-*.*
