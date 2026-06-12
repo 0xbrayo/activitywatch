@@ -1,23 +1,59 @@
 #!/usr/bin/env python3
 import json
+import os
 import subprocess
 import sys
+
+
+def get_version():
+    """Mirrors scripts/package/getversion.sh, without needing a shell to run it
+    (invoking the .sh script directly is unreliable on Windows runners)."""
+    github_ref = os.environ.get("GITHUB_REF", "")
+    if github_ref.startswith("refs/tags/v"):
+        return os.environ["GITHUB_REF_NAME"]
+    if os.environ.get("TRAVIS_TAG"):
+        return os.environ["TRAVIS_TAG"]
+    if os.environ.get("APPVEYOR_REPO_TAG_NAME"):
+        return os.environ["APPVEYOR_REPO_TAG_NAME"]
+
+    try:
+        return subprocess.check_output(
+            ["git", "describe", "--tags", "--abbrev=0", "--exact-match"],
+            stderr=subprocess.DEVNULL,
+        ).decode("utf-8").strip()
+    except subprocess.CalledProcessError:
+        pass
+
+    try:
+        latest_tag = subprocess.check_output(
+            ["git", "describe", "--tags", "--abbrev=0"], stderr=subprocess.DEVNULL
+        ).decode("utf-8").strip()
+    except subprocess.CalledProcessError:
+        latest_tag = "v0.0.0"
+
+    try:
+        commit_hash = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
+        ).decode("utf-8").strip()
+    except subprocess.CalledProcessError:
+        commit_hash = "unknown"
+
+    return f"{latest_tag}.dev-{commit_hash}"
+
 
 def main():
     if len(sys.argv) < 2:
         print("Usage: update_tauri_version.py <path_to_tauri_conf_json>")
         sys.exit(1)
-    
+
     tauri_conf_path = sys.argv[1]
-    
-    # Get version from getversion.sh (run via bash so this works on Windows too,
-    # where the script can't be executed directly)
+
     try:
-        version_output = subprocess.check_output(["bash", "scripts/package/getversion.sh"]).decode('utf-8').strip()
+        version_output = get_version()
     except Exception as e:
-        print(f"Error running getversion.sh: {e}")
+        print(f"Error determining version: {e}")
         sys.exit(1)
-    
+
     # Strip leading 'v'
     if version_output.startswith('v'):
         version = version_output[1:]
