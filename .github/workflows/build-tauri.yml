@@ -343,6 +343,7 @@ jobs:
           draft: true
           files: |
             dist/*/activitywatch-*.*
+            dist/*/updater/*
             dist/latest.json
           body_path: dist/release_notes_tauri/release_notes.md
           prerelease: ${{ !(steps.version.outputs.is_stable == 'true') }}  # must compare to true, since boolean outputs are actually just strings, and "false" is truthy since it's not empty: https://github.com/actions/runner/issues/1483#issuecomment-994986996
