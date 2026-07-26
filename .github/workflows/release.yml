@@ -369,7 +369,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           SIGN_MACOS=false
-          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]] && [ -n "${APPLE_TEAMID:-}" ]; then
             SIGN_MACOS=true
           fi
 
@@ -613,7 +613,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           SIGN_MACOS=false
-          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]] && [ -n "${APPLE_TEAMID:-}" ]; then
             SIGN_MACOS=true
           fi
 
