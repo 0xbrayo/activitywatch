@@ -14,11 +14,13 @@ SHELL := /usr/bin/env bash
 OS := $(shell uname -s)
 
 ifeq ($(TAURI_BUILD),true)
-	SUBMODULES := aw-core aw-client aw-server aw-server-rust aw-watcher-afk aw-watcher-window aw-tauri
-	# Include awatcher on Linux (Wayland-compatible window watcher)
+	# awatcher + aw-sync must be built before aw-tauri on Linux so they can be
+	# staged into the Tauri bundle (self-contained deb/rpm/AppImage). See #232 / aw-tauri#232.
+	SUBMODULES := aw-core aw-client aw-server aw-server-rust aw-watcher-afk aw-watcher-window
 	ifeq ($(OS),Linux)
 		SUBMODULES := $(SUBMODULES) awatcher
 	endif
+	SUBMODULES := $(SUBMODULES) aw-tauri
 else
 	SUBMODULES := aw-core aw-client aw-qt aw-server aw-server-rust aw-watcher-afk aw-watcher-window
 endif
@@ -71,6 +73,10 @@ build: aw-core/.git
 		echo "Building $$module"; \
 		if [ "$$module" = "aw-server-rust" ] && [ "$(TAURI_BUILD)" = "true" ]; then \
 			make --directory=$$module aw-sync SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module aw-sync"; exit 2; }; \
+		elif [ "$$module" = "aw-tauri" ] && [ "$(TAURI_BUILD)" = "true" ] && [ "$(OS)" = "Linux" ]; then \
+			echo "Staging aw-awatcher + aw-sync into aw-tauri for self-contained Linux bundles"; \
+			targetdir=$(targetdir) bash scripts/package/stage-linux-tauri-modules.sh || { echo "Error staging Linux Tauri modules"; exit 2; }; \
+			make --directory=$$module build SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module build"; exit 2; }; \
 		else \
 			make --directory=$$module build SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module build"; exit 2; }; \
 		fi; \

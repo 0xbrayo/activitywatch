@@ -1,10 +1,25 @@
-Run move-to-aw-modules.sh to copy all modules except aw-tauri to ~/aw-modules/.
-aw-tauri (replaces aw-qt) will use this directory to discover new modules.
-You can add your own modules and scripts to this directory. The modules should
-start with the aw- prefix and should not have an extension (e.g. no .sh).
+Linux Tauri packages (AppImage, deb, rpm)
+=========================================
 
-In the aw-tauri folder there are AppImage, RPM, and DEB binaries. Choose the
-appropriate one for your Linux distribution. If in doubt, use the AppImage as
-it works on most Linux systems. If you use the AppImage, copy it to a permanent
-folder like ~/bin or /usr/local/bin, since autostart relies on the AppImage
-being in the same location each time.
+The AppImage / deb / rpm under aw-tauri/ (or the versioned
+activitywatch-tauri-*-linux-* artifacts) are self-contained: they include
+aw-tauri, aw-awatcher (window + AFK on X11 and Wayland), and aw-sync.
+
+Install the package for your distro and run it — no extra step is required
+for basic tracking. If in doubt, use the AppImage; copy it to a permanent
+path such as ~/bin or /usr/local/bin because autostart depends on a stable
+location.
+
+Optional: full module pack (zip)
+================================
+
+The separate activitywatch-tauri-*-linux-*.zip still ships the full module
+tree (including Python watchers). Use it when you need extras beyond the
+Rust watchers bundled in the packages:
+
+  1. Unzip the archive
+  2. Run move-to-aw-modules.sh to copy modules (except aw-tauri) to ~/aw-modules/
+  3. aw-tauri discovers aw-* executables there (and you can add your own)
+
+Modules must start with the aw- prefix and must not have an extension
+(e.g. no .sh).
