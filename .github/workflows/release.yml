@@ -1217,6 +1217,11 @@ jobs:
           pass nested
           git submodule status --recursive
 
+      # Temporary (fork testing): the fork lacks upstream's release tags, so
+      # getversion.sh would fall back to 0.0.0 and fail the server check.
+      - name: Fetch upstream release tags
+        run: git fetch --tags https://github.com/ActivityWatch/activitywatch.git
+
       - name: Set environment variables
         run: |
           echo "RELEASE=${{ startsWith(github.ref_name, 'v') || github.ref_name == 'master' }}" >> "$GITHUB_ENV"
