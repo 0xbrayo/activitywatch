@@ -14,11 +14,13 @@ SHELL := /usr/bin/env bash
 OS := $(shell uname -s)
 
 ifeq ($(TAURI_BUILD),true)
-	SUBMODULES := aw-core aw-client aw-server aw-server-rust aw-watcher-afk aw-watcher-window aw-tauri
-	# Include awatcher on Linux (Wayland-compatible window watcher)
+	SUBMODULES := aw-core aw-client aw-server aw-server-rust aw-watcher-afk aw-watcher-window
+	# Include awatcher on Linux (Wayland-compatible window watcher). It is built
+	# before aw-tauri so it can be bundled into the deb/rpm/AppImage.
 	ifeq ($(OS),Linux)
 		SUBMODULES := $(SUBMODULES) awatcher
 	endif
+	SUBMODULES := $(SUBMODULES) aw-tauri
 else
 	SUBMODULES := aw-core aw-client aw-qt aw-server aw-server-rust aw-watcher-afk aw-watcher-window
 endif
@@ -69,6 +71,9 @@ build: aw-core/.git
 	pip install 'setuptools>49.1.1'
 	for module in $(SUBMODULES); do \
 		echo "Building $$module"; \
+		if [ "$$module" = "aw-tauri" ] && [ "$(OS)" = "Linux" ]; then \
+			$(MAKE) stage-tauri-modules || { echo "Error staging aw-tauri modules"; exit 2; }; \
+		fi; \
 		if [ "$$module" = "aw-server-rust" ] && [ "$(TAURI_BUILD)" = "true" ]; then \
 			make --directory=$$module aw-sync SKIP_WEBUI=$(SKIP_WEBUI) || { echo "Error in $$module aw-sync"; exit 2; }; \
 		else \
@@ -81,6 +86,18 @@ build: aw-core/.git
 #	Needed to ensure that the server has the correct version set
 	python -c "import aw_server; print(aw_server.__version__)"
 
+# Stage the Rust modules into aw-tauri/src-tauri/modules/ so aw-tauri's build
+# bundles them as resources, making the Linux deb/rpm/AppImage self-contained.
+# See ActivityWatch/aw-tauri#232.
+.PHONY: stage-tauri-modules
+stage-tauri-modules:
+	rm -rf aw-tauri/src-tauri/modules
+	mkdir -p aw-tauri/src-tauri/modules
+	cp awatcher/target/$(targetdir)/awatcher aw-tauri/src-tauri/modules/aw-awatcher
+ifneq ($(SKIP_SERVER_RUST),true)
+	cp aw-server-rust/target/$(targetdir)/aw-sync aw-tauri/src-tauri/modules/aw-sync
+endif
+	ls -l aw-tauri/src-tauri/modules
 
 # Install
 # -------

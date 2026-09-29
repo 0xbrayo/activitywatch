@@ -43,7 +43,8 @@ on:
           - research
         default: standard
   push:
-    branches: [master]
+    # test/**: temporary, for testing self-contained Linux Tauri bundles on the fork
+    branches: [master, 'test/**']
     tags:
       - v*
   pull_request:
